@@ -1,0 +1,16 @@
+project_id = "aitention-self-hosting"
+
+[functions.google-calendar]
+verify_jwt = false
+
+# Oura OAuth callback is called by Oura (not the user's browser), so no Supabase JWT
+[functions.oura-oauth-callback]
+verify_jwt = false
+
+# MCP server uses its own bearer-token auth (mcp_tokens), not the Supabase user JWT,
+# so external MCP clients (Claude Desktop, Codex) can connect without a Supabase session.
+[functions.mcp]
+verify_jwt = false
+
+[functions.oura-sync]
+verify_jwt = false
