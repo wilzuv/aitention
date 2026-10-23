@@ -29,7 +29,6 @@ const Projects = lazy(() => import("./pages/Projects"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const Journal = lazy(() => import("./pages/Journal"));
-const Inbox = lazy(() => import("./pages/Inbox"));
 const Planning = lazy(() => import("./pages/Planning"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Skills = lazy(() => import("./pages/Skills"));
@@ -76,7 +75,6 @@ function ProtectedRoutes() {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Today />} />
-          <Route path="/inbox" element={<Inbox />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/foundations" element={<Foundations />} />
           <Route path="/hypotheses" element={<Hypotheses />} />

@@ -40,17 +40,15 @@ import {
 import { TaskCheckbox } from "@/components/ui/TaskCheckbox";
 import { useGoals } from "@/hooks/useGoals";
 import { supabase } from "@/integrations/supabase/client";
-import { PriorityPicker } from "@/components/ui/PriorityPicker";
 import { CalendarIcon, Clock, ExternalLink, Flag, History, Plus, Target, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MetadataChip } from "@/components/tasks/MetadataChip";
 import { RecurrencePopover } from "@/components/tasks/RecurrencePopover";
 import { TaskLogList } from "@/components/tasks/TaskLogList";
-import { getTaskPriorityMeta } from "@/lib/taskPriority";
 import { format, isToday, isTomorrow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { showErrorToast } from "@/lib/utils";
-import { parseTaskInput, replaceTokenInText, priorityToToken, recurrenceToToken } from "@/lib/taskParser";
+import { parseTaskInput, replaceTokenInText, recurrenceToToken } from "@/lib/taskParser";
 import { getDefaultScheduledDate, type RecurrenceRule } from "@/lib/recurrence";
 import { formatDuration } from "@/lib/formatDuration";
 import { useTasks } from "@/hooks/useTasks";
@@ -175,7 +173,6 @@ export function TaskDetailModal({
 
   // ── Create-mode state ──────────────────────────────────────────────
   const [dirty, setDirty] = useState(false);
-  const [manualPriority, setManualPriority] = useState<number | null>(null);
   const [manualDate, setManualDate] = useState<string | null>(null);
   const [manualGoalId, setManualGoalId] = useState<string | null | undefined>(undefined);
   const [manualDeadline, setManualDeadline] = useState<string | null>(null);
@@ -232,7 +229,6 @@ export function TaskDetailModal({
   }, [parsed.goalQuery, goalOptions]);
 
   // Effective values for create mode
-  const effectivePriority = manualPriority ?? parsed.priority ?? 2;
   const effectiveDate = manualDate ?? parsed.date ?? (defaultDate || "");
   const effectiveRecurrence = parsed.recurrence ?? null;
   const effectiveGoalId = manualGoalId !== undefined ? manualGoalId : parsedGoalId;
@@ -365,7 +361,6 @@ export function TaskDetailModal({
       setSuccessCriteria("");
       setEstimatedMinutes("");
       setDirty(false);
-      setManualPriority(null);
       setManualDate(null);
       setManualGoalId(undefined);
       setManualDeadline(null);
@@ -428,13 +423,6 @@ export function TaskDetailModal({
     }
   }, [isCreateMode, parsed.date, manualDate]);
 
-  // Clear manual priority when user types a different priority in text
-  useEffect(() => {
-    if (isCreateMode && parsed.priority !== null && manualPriority !== null && parsed.priority !== manualPriority) {
-      setManualPriority(null);
-    }
-  }, [isCreateMode, parsed.priority, manualPriority]);
-
   const insertNameGoal = (goal: GoalOption) => {
     const input = nameInputRef.current;
     const caret = input?.selectionStart ?? title.length;
@@ -494,15 +482,15 @@ export function TaskDetailModal({
     const finalEstimate = !isNaN(manualMins) && manualMins > 0 ? manualMins : effectiveEstimatedMinutes;
 
     const recurrenceRule = showRecurrenceSection ? buildRecurrenceRule() : effectiveRecurrence;
-    let scheduledDate = effectiveDate || null;
-    if (recurrenceRule && !scheduledDate) {
-      scheduledDate = getDefaultScheduledDate(recurrenceRule);
-    }
+    // Every task needs a scheduled date: recurring tasks start on their first
+    // occurrence, everything else defaults to today.
+    const scheduledDate =
+      effectiveDate ||
+      (recurrenceRule ? getDefaultScheduledDate(recurrenceRule) : format(new Date(), "yyyy-MM-dd"));
 
     createTask.mutate(
       {
         title: cleanName.trim(),
-        priority: effectivePriority,
         goal_id: effectiveGoalId ?? null,
         estimated_minutes: finalEstimate,
         success_criteria: successCriteria.trim() || null,
@@ -600,7 +588,6 @@ export function TaskDetailModal({
     // Only strip tokens we actually persist — leave unhandled tokens in the title
     const persistedTypes = new Set<string>();
     if (editParsed.date) persistedTypes.add("date");
-    if (editParsed.priority !== null) persistedTypes.add("priority");
     if (editParsed.estimatedMinutes !== null) persistedTypes.add("estimate");
     if (editParsed.recurrence) persistedTypes.add("recurrence");
 
@@ -622,7 +609,6 @@ export function TaskDetailModal({
       onReschedule(task.id, editParsed.date);
     }
 
-    if (editParsed.priority !== null) updates.priority = editParsed.priority;
     if (editParsed.estimatedMinutes !== null) updates.estimated_minutes = editParsed.estimatedMinutes;
     if (editParsed.recurrence) updates.recurrence_rule = editParsed.recurrence;
 
@@ -730,7 +716,13 @@ export function TaskDetailModal({
                     <span className="inline-flex"><MetadataChip
                       icon={<CalendarIcon className="w-3 h-3" />}
                       label="Schedule"
-                      value={effectiveDate ? formatDateWithRelative(effectiveDate) : undefined}
+                      value={
+                        effectiveDate
+                          ? formatDateWithRelative(effectiveDate)
+                          : isRecurring
+                            ? undefined
+                            : formatDateWithRelative(format(new Date(), "yyyy-MM-dd"))
+                      }
                       active={openChip === "date"}
                     /></span>
                   </PopoverTrigger>
@@ -788,31 +780,6 @@ export function TaskDetailModal({
                         </Button>
                       </div>
                     )}
-                  </PopoverContent>
-                </Popover>
-
-                {/* Priority chip */}
-                <Popover open={openChip === "priority"} onOpenChange={(o) => setOpenChip(o ? "priority" : null)}>
-                  <PopoverTrigger asChild>
-                    <span className="inline-flex"><MetadataChip
-                      icon={<span className={cn("w-2 h-2 rounded-full inline-block", getTaskPriorityMeta(effectivePriority).dotClass)} />}
-                      label={getTaskPriorityMeta(effectivePriority).label}
-                      value={getTaskPriorityMeta(effectivePriority).label}
-                      active={openChip === "priority"}
-                    /></span>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2" align="start">
-                    <PriorityPicker value={effectivePriority} onChange={(val) => {
-                      // Only update text if there's already a priority token typed by the user
-                      const currentTokens = parseTaskInput(title).tokens;
-                      const hasPriorityToken = currentTokens.some((t) => t.type === "priority");
-                      if (hasPriorityToken) {
-                        setTitle((prev) => replaceTokenInText(prev, parseTaskInput(prev).tokens, "priority", priorityToToken(val)));
-                      }
-                      setManualPriority(val);
-                      markDirty();
-                      setOpenChip(null);
-                    }} />
                   </PopoverContent>
                 </Popover>
 
@@ -1084,7 +1051,6 @@ export function TaskDetailModal({
               disabled={isDone || isDiscarded}
               size="md"
               className="mt-1.5 shrink-0"
-              priorityBorderClass={!isDone ? getTaskPriorityMeta(task.priority).borderClass : undefined}
             />
             <div className="min-w-0 flex-1">
               <HighlightedInput
@@ -1125,7 +1091,7 @@ export function TaskDetailModal({
                 <span className="inline-flex"><MetadataChip
                   icon={<CalendarIcon className="w-3 h-3" />}
                   label="Schedule"
-                  value={task.scheduled_date ? formatDateWithRelative(task.scheduled_date) : undefined}
+                  value={formatDateWithRelative(task.scheduled_date)}
                   active={openChip === "date"}
                 /></span>
               </PopoverTrigger>
@@ -1172,21 +1138,6 @@ export function TaskDetailModal({
                     </Button>
                   </div>
                 )}
-              </PopoverContent>
-            </Popover>
-
-            {/* Priority chip */}
-            <Popover open={openChip === "priority"} onOpenChange={(o) => setOpenChip(o ? "priority" : null)}>
-              <PopoverTrigger asChild>
-                <span className="inline-flex"><MetadataChip
-                  icon={<span className={cn("w-2 h-2 rounded-full inline-block", getTaskPriorityMeta(task.priority).dotClass)} />}
-                  label={getTaskPriorityMeta(task.priority).label}
-                  value={getTaskPriorityMeta(task.priority).label}
-                  active={openChip === "priority"}
-                /></span>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" align="start">
-                <PriorityPicker value={task.priority} onChange={(p) => { onUpdate?.(task.id, { priority: p }); setOpenChip(null); }} />
               </PopoverContent>
             </Popover>
 

@@ -53,7 +53,7 @@ export interface ParsedToken {
   /** End index (exclusive) in the input string */
   end: number;
   /** What type of token */
-  type: "date" | "priority" | "recurrence" | "estimate" | "goal";
+  type: "date" | "recurrence" | "estimate" | "goal";
   /** Resolved value */
   value: string | number | RecurrenceRule;
 }
@@ -63,8 +63,6 @@ export interface ParseResult {
   cleanName: string;
   /** Parsed date (yyyy-MM-dd) or null */
   date: string | null;
-  /** Parsed priority (1=low, 2=medium, 3=high) or null */
-  priority: number | null;
   /** Parsed recurrence rule or null */
   recurrence: RecurrenceRule | null;
   /** Parsed estimate in minutes (from minNN) or null */
@@ -78,11 +76,10 @@ export interface ParseResult {
 }
 
 /**
- * Parse a task name string for natural language date, priority, and recurrence tokens.
+ * Parse a task name string for natural language date, goal, estimate, and recurrence tokens.
  * Todoist-style syntax:
  * - Date: "today", "tomorrow"/"tom", "next monday", "jan 15", "in 3 days", "in 2 weeks"
  * - Goal link query: "@goalname"
- * - Priority: "!1" (high), "!2" (medium), "!3" (low)
  * - Estimate: "min45" (sets estimated minutes to 45)
  * - Recurrence: "every day", "every weekday", "every monday", "every mon, wed, fri", "every 3 days"
  */
@@ -90,19 +87,8 @@ export function parseTaskInput(input: string, referenceDate?: Date): ParseResult
   const today = startOfDay(referenceDate ?? new Date());
   const tokens: ParsedToken[] = [];
 
-  // --- Priority: !1, !2, !3 ---
-  const priorityRegex = /(?:^|\s)(!([123]))(?=\s|$)/g;
-  let match: RegExpExecArray | null;
-  while ((match = priorityRegex.exec(input)) !== null) {
-    const raw = match[1];
-    const idx = match.index + (match[0].length - raw.length);
-    const num = parseInt(match[2], 10);
-    // !1 = High (3), !2 = Medium (2), !3 = Low (1)
-    const priority = num === 1 ? 3 : num === 3 ? 1 : 2;
-    tokens.push({ raw, start: idx, end: idx + raw.length, type: "priority", value: priority });
-  }
-
   // --- Goal query: @goalname ---
+  let match: RegExpExecArray | null;
   const goalRegex = /(?:^|\s)(@([a-zA-Z0-9_-]+))(?=\s|$)/g;
   while ((match = goalRegex.exec(input)) !== null) {
     const raw = match[1];
@@ -397,13 +383,12 @@ export function parseTaskInput(input: string, referenceDate?: Date): ParseResult
   // Extract resolved values
   const dateTokens = filtered.filter((t) => t.type === "date");
   const goalTokens = filtered.filter((t) => t.type === "goal");
-  const priorityTokens = filtered.filter((t) => t.type === "priority");
   const recurrenceTokens = filtered.filter((t) => t.type === "recurrence");
   const estimateTokens = filtered.filter((t) => t.type === "estimate");
 
   // Detect conflicts: for single-value types, all tokens except the last are inactive
   const inactiveTokens: ParsedToken[] = [];
-  const singleValueTypes: ParsedToken["type"][] = ["date", "priority", "recurrence", "estimate", "goal"];
+  const singleValueTypes: ParsedToken["type"][] = ["date", "recurrence", "estimate", "goal"];
   for (const type of singleValueTypes) {
     const tokensOfType = filtered.filter((t) => t.type === type);
     if (tokensOfType.length > 1) {
@@ -416,7 +401,6 @@ export function parseTaskInput(input: string, referenceDate?: Date): ParseResult
     cleanName,
     date: dateTokens.length > 0 ? (dateTokens[dateTokens.length - 1].value as string) : null,
     goalQuery: goalTokens.length > 0 ? String(goalTokens[goalTokens.length - 1].value) : null,
-    priority: priorityTokens.length > 0 ? (priorityTokens[priorityTokens.length - 1].value as number) : null,
     recurrence: recurrenceTokens.length > 0 ? (recurrenceTokens[recurrenceTokens.length - 1].value as RecurrenceRule) : null,
     estimatedMinutes: estimateTokens.length > 0 ? (estimateTokens[estimateTokens.length - 1].value as number) : null,
     tokens: filtered,
@@ -459,13 +443,6 @@ export function replaceTokenInText(
   }
 
   return text;
-}
-
-/** Convert internal priority value (1=low, 2=medium, 3=high) back to text token */
-export function priorityToToken(priority: number): string {
-  if (priority === 3) return "!1";
-  if (priority === 1) return "!3";
-  return "!2";
 }
 
 const REVERSE_DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];

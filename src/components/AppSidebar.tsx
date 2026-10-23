@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Inbox, Target, CheckSquare, CalendarRange, Settings, Plus, ListPlus, Smile, FileText, Play, Lightbulb, GitBranch, TrendingUp, FlaskConical, Compass, BookOpen, BookText, FolderKanban } from "lucide-react";
+import { Home, Target, CheckSquare, CalendarRange, Settings, Plus, ListPlus, Smile, FileText, Play, Lightbulb, GitBranch, TrendingUp, FlaskConical, Compass, BookOpen, BookText, FolderKanban } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -16,7 +16,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useQuickAdd } from "@/contexts/QuickAddContext";
 
 const dataPages = [
-  { title: "Inbox", url: "/inbox", icon: Inbox },
   { title: "Today", url: "/", icon: Home },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
   { title: "Journal", url: "/journal", icon: BookText },

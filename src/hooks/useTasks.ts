@@ -212,7 +212,7 @@ export function useTasks(opts: UseTasksOptions = {}) {
   });
 
   const rescheduleTask = useMutation({
-    mutationFn: ({ id, toDate }: { id: string; toDate: string | null }) =>
+    mutationFn: ({ id, toDate }: { id: string; toDate: string }) =>
       taskService.rescheduleTask(supabase, id, toDate),
     onSuccess: invalidate,
   });

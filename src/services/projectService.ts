@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { format } from "date-fns";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 // ── Types ──
@@ -321,11 +322,11 @@ export async function setItemProject(
   if (error) throw error;
 }
 
-// Local YYYY-MM-DD for date-typed columns that are NOT NULL (experiment
-// start_date, prediction resolution_date). A quick-created item just needs a
-// valid placeholder the user can refine later.
+// Local YYYY-MM-DD for date-typed columns that are NOT NULL (task
+// scheduled_date, experiment start_date, prediction resolution_date). A
+// quick-created item just needs a valid placeholder the user can refine later.
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return format(new Date(), "yyyy-MM-dd");
 }
 
 // Create a new primitive already linked to a project (and optionally a
@@ -342,7 +343,7 @@ export async function createProjectItem(
 ): Promise<string> {
   const link = { project_id: projectId, milestone_id: milestoneId };
   const payload: Record<ProjectItemType, Record<string, unknown>> = {
-    task: { title, status: "open", ...link },
+    task: { title, status: "open", scheduled_date: todayIso(), ...link },
     goal: { title, ...link },
     hypothesis: { statement: title, current_credence: 50, ...link },
     decision: { title, context: "", ...link },

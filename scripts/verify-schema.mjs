@@ -32,7 +32,8 @@ try {
     await pg.exec('SET ROLE authenticated');
   }
   await asUser(alice);
-  const task=(await pg.query("insert into tasks(title) values ('Synthetic task') returning id,user_id")).rows[0];
+  const task=(await pg.query("insert into tasks(title,scheduled_date) values ('Synthetic task','2026-01-01') returning id,user_id")).rows[0];
+  await assert.rejects(pg.query("insert into tasks(title) values ('Unscheduled')"),/not-null/);
   assert.equal(task.user_id,alice);
   const goal=(await pg.query("insert into goals(title) values ('Synthetic goal') returning id")).rows[0];
   await pg.query('select increment_actual_minutes($1,5)',[task.id]);
@@ -40,15 +41,15 @@ try {
   await asUser(bob);
   assert.equal((await pg.query('select * from tasks')).rows.length,0);
   assert.equal((await pg.query('update tasks set title=$1 where id=$2 returning id',['Unauthorized',task.id])).rows.length,0);
-  await assert.rejects(pg.query('insert into tasks(title,user_id) values ($1,$2)',['Wrong owner',alice]),/row-level security/);
-  await assert.rejects(pg.query('insert into tasks(title,goal_id) values ($1,$2)',['Wrong goal',goal.id]),/foreign key/);
+  await assert.rejects(pg.query('insert into tasks(title,scheduled_date,user_id) values ($1,$2,$3)',['Wrong owner','2026-01-01',alice]),/row-level security/);
+  await assert.rejects(pg.query('insert into tasks(title,scheduled_date,goal_id) values ($1,$2,$3)',['Wrong goal','2026-01-01',goal.id]),/foreign key/);
   await pg.exec('RESET ROLE; SET ROLE anon');
   await assert.rejects(pg.query('select * from tasks'),/permission denied/);
-  console.log('PASS: browser ownership, anonymous denial, authorized time-logging RPC');
+  console.log('PASS: browser ownership, required scheduled date, anonymous denial, authorized time-logging RPC');
 
   // Service-role access bypasses RLS, but must not create cross-account relationships.
   await pg.exec('RESET ROLE; SET ROLE service_role');
-  await assert.rejects(pg.query('insert into tasks(title,user_id,goal_id) values ($1,$2,$3)',['Bad link',bob,goal.id]),/foreign key/);
+  await assert.rejects(pg.query('insert into tasks(title,scheduled_date,user_id,goal_id) values ($1,$2,$3,$4)',['Bad link','2026-01-01',bob,goal.id]),/foreign key/);
   await assert.rejects(pg.query('insert into goal_logs(user_id,goal_id,note) values ($1,$2,$3)',[bob,goal.id,'Bad link']),/foreign key/);
   await pg.query('insert into goal_logs(user_id,goal_id,note) values ($1,$2,$3)',[alice,goal.id,'Synthetic note']);
   await pg.query('update tasks set goal_id=$1 where id=$2',[goal.id,task.id]);

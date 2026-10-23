@@ -66,10 +66,10 @@ describe("parseTaskInput date shorthand", () => {
   });
 
   it("parses 'tod' with other tokens", () => {
-    const parsed = parseTaskInput("Call dentist tod !1", referenceDate);
+    const parsed = parseTaskInput("Call dentist tod min30", referenceDate);
 
     expect(parsed.date).toBe("2026-03-25");
-    expect(parsed.priority).toBe(3); // !1 = High = 3
+    expect(parsed.estimatedMinutes).toBe(30);
     expect(parsed.cleanName).toBe("Call dentist");
   });
 
@@ -186,10 +186,10 @@ describe("parseTaskInput numeric dates", () => {
   });
 
   it("parses numeric date with other tokens", () => {
-    const parsed = parseTaskInput("Buy gift 25.12 !1", referenceDate);
+    const parsed = parseTaskInput("Buy gift 25.12 min30", referenceDate);
 
     expect(parsed.date).toBe("2026-12-25");
-    expect(parsed.priority).toBe(3); // !1 = High = 3
+    expect(parsed.estimatedMinutes).toBe(30);
     expect(parsed.cleanName).toBe("Buy gift");
   });
 });
@@ -267,21 +267,21 @@ describe("parseTaskInput monthly recurrence", () => {
 describe("replaceTokenInText", () => {
   const referenceDate = new Date("2026-03-25T00:00:00Z");
 
-  it("replaces an existing priority token", () => {
-    const parsed = parseTaskInput("Buy milk !1", referenceDate);
-    const result = replaceTokenInText("Buy milk !1", parsed.tokens, "priority", "!2");
-    expect(result).toBe("Buy milk !2");
+  it("replaces an existing estimate token", () => {
+    const parsed = parseTaskInput("Buy milk min30", referenceDate);
+    const result = replaceTokenInText("Buy milk min30", parsed.tokens, "estimate", "min45");
+    expect(result).toBe("Buy milk min45");
   });
 
-  it("appends priority when none exists", () => {
+  it("appends estimate when none exists", () => {
     const parsed = parseTaskInput("Buy milk", referenceDate);
-    const result = replaceTokenInText("Buy milk", parsed.tokens, "priority", "!1");
-    expect(result).toBe("Buy milk !1");
+    const result = replaceTokenInText("Buy milk", parsed.tokens, "estimate", "min30");
+    expect(result).toBe("Buy milk min30");
   });
 
-  it("removes a priority token when newRaw is null", () => {
-    const parsed = parseTaskInput("Buy milk !1", referenceDate);
-    const result = replaceTokenInText("Buy milk !1", parsed.tokens, "priority", null);
+  it("removes an estimate token when newRaw is null", () => {
+    const parsed = parseTaskInput("Buy milk min30", referenceDate);
+    const result = replaceTokenInText("Buy milk min30", parsed.tokens, "estimate", null);
     expect(result).toBe("Buy milk");
   });
 
@@ -292,9 +292,9 @@ describe("replaceTokenInText", () => {
   });
 
   it("appends a date when none exists", () => {
-    const parsed = parseTaskInput("Buy milk !1", referenceDate);
-    const result = replaceTokenInText("Buy milk !1", parsed.tokens, "date", "tomorrow");
-    expect(result).toBe("Buy milk !1 tomorrow");
+    const parsed = parseTaskInput("Buy milk min30", referenceDate);
+    const result = replaceTokenInText("Buy milk min30", parsed.tokens, "date", "tomorrow");
+    expect(result).toBe("Buy milk min30 tomorrow");
   });
 
   it("replaces recurrence token", () => {
@@ -305,7 +305,7 @@ describe("replaceTokenInText", () => {
 
   it("returns text unchanged when removing non-existent token", () => {
     const parsed = parseTaskInput("Buy milk", referenceDate);
-    const result = replaceTokenInText("Buy milk", parsed.tokens, "priority", null);
+    const result = replaceTokenInText("Buy milk", parsed.tokens, "estimate", null);
     expect(result).toBe("Buy milk");
   });
 });
@@ -313,11 +313,11 @@ describe("replaceTokenInText", () => {
 describe("conflict detection (inactiveTokens)", () => {
   const referenceDate = new Date("2026-03-25T00:00:00Z");
 
-  it("detects conflicting priority tokens", () => {
-    const parsed = parseTaskInput("Task !1 !2", referenceDate);
-    expect(parsed.priority).toBe(2); // Last one wins: !2 = Medium
+  it("detects conflicting estimate tokens", () => {
+    const parsed = parseTaskInput("Task min30 min45", referenceDate);
+    expect(parsed.estimatedMinutes).toBe(45); // Last one wins
     expect(parsed.inactiveTokens.length).toBe(1);
-    expect(parsed.inactiveTokens[0].raw).toBe("!1");
+    expect(parsed.inactiveTokens[0].raw).toBe("min30");
   });
 
   it("detects conflicting recurrence tokens", () => {
@@ -328,7 +328,7 @@ describe("conflict detection (inactiveTokens)", () => {
   });
 
   it("no conflicts when different types", () => {
-    const parsed = parseTaskInput("Task every day tomorrow !1", referenceDate);
+    const parsed = parseTaskInput("Task every day tomorrow min30", referenceDate);
     expect(parsed.inactiveTokens.length).toBe(0);
   });
 });

@@ -11,6 +11,7 @@ export type TaskUpdateRow = TablesUpdate<"tasks">;
 
 export type TaskInsert = Partial<Omit<Task, "id" | "created_at" | "updated_at">> & {
   title: string;
+  scheduled_date: string;
 };
 
 export type TaskUpdate = Partial<Omit<Task, "id" | "created_at" | "updated_at">>;
@@ -33,7 +34,6 @@ export function parseTask(row: TaskRow): Task {
     id: row.id,
     title: row.title,
     status: row.status as Task["status"],
-    priority: row.priority ?? 2,
     due_date: row.due_date,
     scheduled_date: row.scheduled_date,
     goal_id: row.goal_id,
@@ -60,7 +60,6 @@ export function taskToInsertRow(t: Task): TaskInsertRow {
   const row: TaskInsertRow = {
     title: t.title,
     status: t.status,
-    priority: t.priority,
     due_date: t.due_date,
     scheduled_date: t.scheduled_date,
     goal_id: t.goal_id,
@@ -82,9 +81,8 @@ export function buildInsertPayload(input: TaskInsert): TaskInsertRow {
   const payload: TaskInsertRow = {
     title: input.title,
     status: input.status ?? "open",
-    priority: input.priority ?? 2,
     due_date: input.due_date ?? null,
-    scheduled_date: input.scheduled_date ?? null,
+    scheduled_date: input.scheduled_date,
     goal_id: input.goal_id ?? null,
     estimated_minutes: input.estimated_minutes ?? null,
     success_criteria: input.success_criteria ?? null,
@@ -105,7 +103,6 @@ export function buildUpdatePayload(updates: TaskUpdate): TaskUpdateRow {
 
   if ("title" in updates) payload.title = updates.title;
   if ("status" in updates) payload.status = updates.status;
-  if ("priority" in updates) payload.priority = updates.priority;
   if ("due_date" in updates) payload.due_date = updates.due_date;
   if ("scheduled_date" in updates) payload.scheduled_date = updates.scheduled_date;
   if ("goal_id" in updates) payload.goal_id = updates.goal_id;
@@ -249,7 +246,7 @@ export async function completeTask(supabase: SupabaseClient, id: string): Promis
 export async function rescheduleTask(
   supabase: SupabaseClient,
   id: string,
-  toDate: string | null
+  toDate: string
 ): Promise<void> {
   const now = new Date().toISOString();
 
@@ -262,8 +259,8 @@ export async function rescheduleTask(
 
   const currentHistory = ((current as Record<string, unknown>).schedule_history as ScheduleHistoryEntry[] | null) ?? [];
   const historyEntry: ScheduleHistoryEntry = {
-    from: current.scheduled_date ?? "",
-    to: toDate ?? "",
+    from: current.scheduled_date,
+    to: toDate,
     changed_at: now,
   };
 
@@ -312,7 +309,6 @@ export async function batchUpdateTasks(
 
   if ("title" in updates) payload.title = updates.title;
   if ("status" in updates) payload.status = updates.status;
-  if ("priority" in updates) payload.priority = updates.priority;
   if ("due_date" in updates) payload.due_date = updates.due_date;
   if ("scheduled_date" in updates) payload.scheduled_date = updates.scheduled_date;
   if ("goal_id" in updates) payload.goal_id = updates.goal_id;

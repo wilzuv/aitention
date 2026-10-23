@@ -7,7 +7,6 @@ describe("parseTask", () => {
       id: "abc-123",
       title: "Test task",
       status: "open",
-      priority: 3,
       due_date: "2026-04-01",
       scheduled_date: "2026-03-26",
       goal_id: "goal-1",
@@ -28,7 +27,7 @@ describe("parseTask", () => {
 
     const task = parseTask(row as never);
     expect(task.id).toBe("abc-123");
-    expect(task.priority).toBe(3);
+    expect(task.scheduled_date).toBe("2026-03-26");
     expect(task.actual_minutes).toBe(15);
     expect(task.schedule_history).toHaveLength(1);
     expect(task.recurrence_rule).toEqual({ type: "daily" });
@@ -39,9 +38,8 @@ describe("parseTask", () => {
       id: "abc-456",
       title: "Minimal",
       status: "open",
-      priority: null,
       due_date: null,
-      scheduled_date: null,
+      scheduled_date: "2026-03-20",
       goal_id: null,
       estimated_minutes: null,
       actual_minutes: null,
@@ -59,7 +57,6 @@ describe("parseTask", () => {
     };
 
     const task = parseTask(row as never);
-    expect(task.priority).toBe(2);
     expect(task.actual_minutes).toBe(0);
     expect(task.schedule_history).toEqual([]);
     expect(task.recurrence_rule).toBeNull();
@@ -89,15 +86,16 @@ describe("buildUpdatePayload", () => {
     const payload = buildUpdatePayload({ title: "New title" });
     expect(payload.title).toBe("New title");
     expect(payload.status).toBeUndefined();
-    expect(payload.priority).toBeUndefined();
+    expect(payload.scheduled_date).toBeUndefined();
   });
 });
 
 describe("buildInsertPayload", () => {
   it("defaults optional fields", () => {
-    const payload = buildInsertPayload({ title: "Test" });
+    const payload = buildInsertPayload({ title: "Test", scheduled_date: "2026-03-20" });
     expect(payload.title).toBe("Test");
     expect(payload.status).toBe("open");
-    expect(payload.priority).toBe(2);
+    expect(payload.scheduled_date).toBe("2026-03-20");
+    expect(payload.due_date).toBeNull();
   });
 });

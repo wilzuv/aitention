@@ -323,9 +323,8 @@ CREATE TABLE public.tasks (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     title text NOT NULL,
     status text DEFAULT 'open'::text NOT NULL,
-    priority integer DEFAULT 2,
     due_date date,
-    scheduled_date date,
+    scheduled_date date NOT NULL,
     goal_id uuid,
     estimated_minutes integer,
     actual_minutes integer DEFAULT 0,
@@ -343,7 +342,6 @@ CREATE TABLE public.tasks (
     linear_ticket_id uuid,
     project_id uuid,
     milestone_id uuid,
-    CONSTRAINT tasks_priority_check CHECK (((priority >= 1) AND (priority <= 3))),
     CONSTRAINT tasks_status_check CHECK ((status = ANY (ARRAY['open'::text, 'done'::text, 'discarded'::text])))
 );
 
@@ -666,7 +664,7 @@ CREATE INDEX task_logs_user_idx ON public.task_logs USING btree (user_id);
 
 CREATE INDEX tasks_linear_ticket_id_idx ON public.tasks USING btree (linear_ticket_id) WHERE (linear_ticket_id IS NOT NULL);
 
-CREATE UNIQUE INDEX tasks_unique_open_recurring_per_day ON public.tasks USING btree (user_id, title, scheduled_date) WHERE ((status = 'open'::text) AND (recurrence_rule IS NOT NULL) AND (scheduled_date IS NOT NULL));
+CREATE UNIQUE INDEX tasks_unique_open_recurring_per_day ON public.tasks USING btree (user_id, title, scheduled_date) WHERE ((status = 'open'::text) AND (recurrence_rule IS NOT NULL));
 
 CREATE INDEX user_integrations_user_id_idx ON public.user_integrations USING btree (user_id);
 

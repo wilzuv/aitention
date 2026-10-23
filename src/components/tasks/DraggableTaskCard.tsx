@@ -2,7 +2,6 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { Task } from "@/types/daily";
 import { TaskCheckbox } from "@/components/ui/TaskCheckbox";
-import { getTaskPriorityMeta } from "@/lib/taskPriority";
 
 interface DraggableTaskCardProps {
   task: Task;
@@ -15,8 +14,6 @@ export function DraggableTaskCard({ task, onToggle, onClick, overlay }: Draggabl
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
   });
-
-  const priority = getTaskPriorityMeta(task.priority);
 
   const style = transform
     ? { transform: CSS.Translate.toString(transform) }
@@ -44,7 +41,6 @@ export function DraggableTaskCard({ task, onToggle, onClick, overlay }: Draggabl
             checked={task.status === "done"}
             onChange={(done) => onToggle(task.id, done)}
             disabled={task.status === "discarded"}
-            priorityBorderClass={task.status !== "done" ? priority.borderClass : undefined}
           />
         </div>
         <button

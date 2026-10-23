@@ -65,7 +65,6 @@ export function MonthView({
   const tasksByDate = useMemo(() => {
     const map = new Map<string, Task[]>();
     for (const task of tasks) {
-      if (!task.scheduled_date) continue;
       const existing = map.get(task.scheduled_date) ?? [];
       existing.push(task);
       map.set(task.scheduled_date, existing);
@@ -189,12 +188,6 @@ export function MonthView({
                   {/* Task bars (up to 2) */}
                   <div className="space-y-0.5 flex-1 min-w-0">
                     {dayTasks.slice(0, 2).map((task) => {
-                      const priorityColor =
-                        task.priority === 3
-                          ? "bg-red-500"
-                          : task.priority === 2
-                            ? "bg-amber-500"
-                            : "bg-transparent";
                       return (
                         <div
                           key={task.id}
@@ -208,9 +201,6 @@ export function MonthView({
                               : ""
                           }`}
                         >
-                          <div
-                            className={`w-1 h-3 rounded-full shrink-0 ${priorityColor}`}
-                          />
                           <span
                             className={`text-[10px] leading-tight truncate ${
                               task.status === "done"

@@ -4,8 +4,6 @@ interface TaskCheckboxProps {
   disabled?: boolean;
   size?: "sm" | "md";
   className?: string;
-  /** Tailwind border class to indicate priority, e.g. "border-red-500" */
-  priorityBorderClass?: string;
 }
 
 export function TaskCheckbox({
@@ -14,7 +12,6 @@ export function TaskCheckbox({
   disabled = false,
   size = "sm",
   className = "",
-  priorityBorderClass,
 }: TaskCheckboxProps) {
   const dim = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const checkDim = size === "sm" ? 10 : 13;
@@ -31,9 +28,7 @@ export function TaskCheckbox({
       className={`flex-shrink-0 ${dim} rounded-full border-2 transition-colors flex items-center justify-center ${
         checked
           ? "bg-primary border-primary text-primary-foreground"
-          : priorityBorderClass
-            ? `${priorityBorderClass} hover:border-primary/60`
-            : "border-muted-foreground/40 hover:border-primary/60"
+          : "border-muted-foreground/40 hover:border-primary/60"
       } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${className}`}
       aria-checked={checked}
       role="checkbox"

@@ -13,7 +13,6 @@ import type { ScopedClient } from "./scopedClient.ts";
 import {
   addDays,
   NotFoundError,
-  priorityNumToWord,
   ValidationError,
 } from "./helpers.ts";
 import { SKILLS } from "./skills.generated.ts";
@@ -45,7 +44,7 @@ export const READ_TOOLS: ToolDef[] = [
   {
     name: `${MCP_TOOL_PREFIX}get_tasks`,
     description:
-      "Retrieve tasks. Date range filter checks scheduled_date OR due_date. Pass id to fetch a single task. priority is returned as a word (high/medium/low). Includes estimated_minutes and actual_minutes. " +
+      "Retrieve tasks. Date range filter checks scheduled_date OR due_date. Pass id to fetch a single task. Every task has a scheduled_date. Includes estimated_minutes and actual_minutes. " +
       "Recurring tasks (recurrence_rule set) are never marked status='done' on completion — instead each completion is logged and scheduled_date is advanced to the next occurrence, so the task stays open. Such a task carries a recurrence_completions array (most recent first; each entry has completed_at and scheduled_for) — a non-empty list means the user has been completing it, NOT that they manually moved/rescheduled it. Manual moves are recorded separately in schedule_history. Don't infer a recurring task was rescheduled just because scheduled_date is in the future; check recurrence_completions first.",
     inputSchema: {
       type: "object",
@@ -258,7 +257,7 @@ async function getGoals(c: ScopedClient, p: Params) {
 }
 
 async function getTasks(c: ScopedClient, p: Params) {
-  let q = c.from("tasks").select("*").order("scheduled_date", { ascending: true, nullsFirst: false });
+  let q = c.from("tasks").select("*").order("scheduled_date", { ascending: true });
   if (p.id) q = q.eq("id", p.id);
   if (p.status) q = q.eq("status", p.status);
   if (p.goal_id) q = q.eq("goal_id", p.goal_id);
@@ -272,7 +271,9 @@ async function getTasks(c: ScopedClient, p: Params) {
   const { data, error } = await q;
   if (error) throw error;
 
-  const tasks = (data ?? []).map(withPriorityWord);
+  // Cast keeps the supabase-js GenericStringError union off the element type
+  // (same pattern the handlers below use for maybeSingle results).
+  const tasks = (data ?? []) as unknown as Record<string, unknown>[];
 
   // Recurring tasks never go status='done' — completions live in a separate
   // table and scheduled_date is advanced instead. Without this, a completed
@@ -314,15 +315,6 @@ async function getTasks(c: ScopedClient, p: Params) {
   }
 
   return { tasks };
-}
-
-// The MCP surface speaks priority as a word both ways: writes accept
-// high/medium/low, reads return it. DB/UI stay numeric (see helpers.ts).
-// Cast keeps the supabase-js GenericStringError union off the callback param
-// (same pattern the handlers below use for maybeSingle results).
-function withPriorityWord(task: unknown) {
-  const t = task as Record<string, unknown>;
-  return { ...t, priority: priorityNumToWord(t.priority) };
 }
 
 

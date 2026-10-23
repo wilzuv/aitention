@@ -16,7 +16,6 @@ import {
   NotFoundError,
   ValidationError,
   isoNow,
-  priorityWordToNum,
 } from "./helpers.ts";
 import {
   getNextRecurringDate,
@@ -80,21 +79,20 @@ export const WRITE_TOOLS: ToolDef[] = [
   {
     name: `${MCP_TOOL_PREFIX}create_task`,
     description:
-      "Create a task. Defaults: status='open', priority='medium'. scheduled_date is when you plan to do it; due_date is a hard deadline (the two are independent — a task can have either, both, or neither). Pass linear_ticket_id (UUID of a linear_tickets row) to link this task to a Linear ticket. Returns the created task.",
+      "Create a task. Defaults: status='open'. scheduled_date (required) is when you plan to do it; due_date is an optional hard deadline, independent of scheduled_date. Pass linear_ticket_id (UUID of a linear_tickets row) to link this task to a Linear ticket. Returns the created task.",
     inputSchema: {
       type: "object",
       properties: {
         title: { type: "string" },
         goal_id: { type: "string" },
-        scheduled_date: { type: "string", format: "date" },
+        scheduled_date: { type: "string", format: "date", description: "When you plan to do it (YYYY-MM-DD). Required." },
         due_date: { type: "string", format: "date", description: "Hard deadline (YYYY-MM-DD). Distinct from scheduled_date, which is when you plan to do it." },
-        priority: { type: "string", enum: ["high", "medium", "low"], description: "Defaults to 'medium'." },
         estimated_minutes: { type: "number" },
         notes: { type: "string" },
         linear_ticket_id: { type: "string" },
         project_id: { type: "string", description: "Project to file this task under (see list_projects)." },
       },
-      required: ["title"],
+      required: ["title", "scheduled_date"],
     },
   },
   {
@@ -107,9 +105,8 @@ export const WRITE_TOOLS: ToolDef[] = [
         id: { type: "string" },
         title: { type: "string" },
         status: { type: "string", enum: ["open", "done", "discarded"] },
-        scheduled_date: { type: "string", format: "date" },
+        scheduled_date: { type: "string", format: "date", description: "Reschedule to this date (YYYY-MM-DD). Cannot be cleared." },
         due_date: { type: ["string", "null"], format: "date", description: "Hard deadline (YYYY-MM-DD), or null to clear." },
-        priority: { type: "string", enum: ["high", "medium", "low"] },
         notes: { type: "string" },
         linear_ticket_id: { type: ["string", "null"] },
         project_id: { type: ["string", "null"], description: "Project to file this under, or null to remove from its project." },
@@ -615,11 +612,11 @@ async function deleteGoal(c: ScopedClient, p: Params) {
 
 // Mirrors src/services/taskService.ts:65-79, 162-172 (createTask).
 async function createTask(c: ScopedClient, p: Params) {
+  if (!p.scheduled_date) throw new ValidationError("scheduled_date is required.");
   const row: Record<string, unknown> = {
     title: p.title,
     status: "open",
-    priority: p.priority === undefined ? 2 : priorityWordToNum(p.priority),
-    scheduled_date: p.scheduled_date ?? null,
+    scheduled_date: p.scheduled_date,
     due_date: p.due_date ?? null,
     goal_id: p.goal_id ?? null,
     estimated_minutes: p.estimated_minutes ?? null,
@@ -645,6 +642,9 @@ async function createTask(c: ScopedClient, p: Params) {
 // recurrence_rule presence before completing).
 async function updateTask(c: ScopedClient, p: Params) {
   const id = String(p.id);
+  if (p.scheduled_date === null || p.scheduled_date === "") {
+    throw new ValidationError("scheduled_date cannot be cleared; pass a date to reschedule.");
+  }
   const { data: existing } = await c
     .from("tasks")
     .select("id, recurrence_rule, scheduled_date")
@@ -661,16 +661,15 @@ async function updateTask(c: ScopedClient, p: Params) {
     existing as { recurrence_rule: RecurrenceRule | null }
   ).recurrence_rule;
   const currentScheduledDate = (
-    existing as { scheduled_date: string | null }
+    existing as { scheduled_date: string }
   ).scheduled_date;
 
   // Recurring-task completion path: advance schedule, log completion, keep open.
   if (p.status === "done" && recurrenceRule) {
-    const todayStr = now.slice(0, 10);
     const referenceDate =
       getRecurrenceAnchor(recurrenceRule) === "completion"
-        ? todayStr
-        : (currentScheduledDate ?? todayStr);
+        ? now.slice(0, 10)
+        : currentScheduledDate;
     const nextDate = getNextRecurringDate({
       rule: recurrenceRule,
       referenceDate,
@@ -680,7 +679,7 @@ async function updateTask(c: ScopedClient, p: Params) {
       .from("recurrence_completions")
       .insert({
         task_id: id,
-        scheduled_for: currentScheduledDate ?? todayStr,
+        scheduled_for: currentScheduledDate,
       });
     if (logErr) throw logErr;
 
@@ -691,7 +690,6 @@ async function updateTask(c: ScopedClient, p: Params) {
       updated_at: now,
     };
     if (p.title !== undefined) patch.title = p.title;
-    if (p.priority !== undefined) patch.priority = priorityWordToNum(p.priority);
     if (p.notes !== undefined) patch.notes = p.notes;
     if (p.due_date !== undefined) patch.due_date = p.due_date;
     if ("linear_ticket_id" in p) patch.linear_ticket_id = p.linear_ticket_id ?? null;
@@ -712,7 +710,6 @@ async function updateTask(c: ScopedClient, p: Params) {
   if (p.status !== undefined) patch.status = p.status;
   if (p.scheduled_date !== undefined) patch.scheduled_date = p.scheduled_date;
   if (p.due_date !== undefined) patch.due_date = p.due_date;
-  if (p.priority !== undefined) patch.priority = priorityWordToNum(p.priority);
   if (p.notes !== undefined) patch.notes = p.notes;
   if ("linear_ticket_id" in p) patch.linear_ticket_id = p.linear_ticket_id ?? null;
   if (p.project_id !== undefined) patch.project_id = p.project_id;

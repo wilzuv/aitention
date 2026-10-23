@@ -246,7 +246,6 @@ export function tokenLabel(t: ParsedToken): string {
   switch (t.type) {
     case "date": return `Date: ${t.value}`;
     case "goal": return `Goal: @${t.value}`;
-    case "priority": return `Priority: ${t.value === 3 ? "High" : t.value === 1 ? "Low" : "Medium"}`;
     case "estimate": return `Estimate: ${t.value} min`;
     case "recurrence": return `Repeat: ${describeRecurrence(t.value as RecurrenceRule)}`;
   }
@@ -256,7 +255,6 @@ export function tokenTypeColor(type?: string): string {
   switch (type) {
     case "date": return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
     case "goal": return "bg-pink-500/10 text-pink-700 dark:text-pink-400";
-    case "priority": return "bg-amber-500/15 text-amber-700 dark:text-amber-300";
     case "estimate": return "bg-amber-500/10 text-amber-700 dark:text-amber-400";
     case "recurrence": return "bg-violet-500/10 text-violet-600 dark:text-violet-400";
     default: return "";

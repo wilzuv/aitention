@@ -22,7 +22,7 @@ import { DraggableTaskCard } from "./DraggableTaskCard";
 interface CalendarWeekViewProps {
   tasks: Task[];
   markersByDate?: Map<string, PlanningMarker[]>;
-  onReschedule: (id: string, toDate: string | null) => void;
+  onReschedule: (id: string, toDate: string) => void;
   onToggle: (id: string, done: boolean) => void;
   onClickTask: (id: string) => void;
 }

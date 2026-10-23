@@ -94,7 +94,7 @@ function AgendaRow({ item }: AgendaRowProps) {
         "hover:bg-surface-hover",
       )}
     >
-      {/* Accent bar — mirrors the priority strip on task rows */}
+      {/* Accent bar — mirrors the overdue strip on task rows */}
       <div
         className={cn("absolute left-0 top-2 bottom-2 w-[3px] rounded-full", meta.barClass)}
         aria-hidden

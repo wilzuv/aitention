@@ -10,17 +10,13 @@ import { getNextRecurringDate, getRecurrenceAnchor, type RecurrenceRule } from "
  */
 export async function completeRecurring(
   supabase: SupabaseClient,
-  task: { id: string; recurrence_rule: RecurrenceRule; scheduled_date: string | null }
+  task: { id: string; recurrence_rule: RecurrenceRule; scheduled_date: string }
 ): Promise<string> {
   const rule = task.recurrence_rule;
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-  // Fallback to today if scheduled_date is missing. In practice recurring
-  // tasks should always have a scheduled_date, but defaulting to today
-  // avoids a hard error and produces a reasonable next date.
   const referenceDate =
     getRecurrenceAnchor(rule) === "completion"
-      ? todayStr
-      : (task.scheduled_date ?? todayStr);
+      ? format(new Date(), "yyyy-MM-dd")
+      : task.scheduled_date;
   const nextDate = getNextRecurringDate({ rule, referenceDate });
 
   // Log the completion
@@ -28,7 +24,7 @@ export async function completeRecurring(
     .from("recurrence_completions")
     .insert({
       task_id: task.id,
-      scheduled_for: task.scheduled_date ?? todayStr,
+      scheduled_for: task.scheduled_date,
     });
   if (logError) throw logError;
 

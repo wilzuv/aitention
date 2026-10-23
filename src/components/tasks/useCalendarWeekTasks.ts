@@ -11,7 +11,6 @@ export interface DayStats {
 export interface CalendarWeekData {
   days: string[];
   byDay: Record<string, Task[]>;
-  unscheduled: Task[];
   stats: Record<string, DayStats>;
 }
 
@@ -23,22 +22,16 @@ export function useCalendarWeekTasks(tasks: Task[], weekStart: Date): CalendarWe
 
     const byDay: Record<string, Task[]> = {};
     days.forEach((d) => (byDay[d] = []));
-    const unscheduled: Task[] = [];
 
     for (const task of tasks) {
-      if (task.scheduled_date && days.includes(task.scheduled_date)) {
+      if (days.includes(task.scheduled_date)) {
         byDay[task.scheduled_date].push(task);
-      } else if (!task.scheduled_date) {
-        unscheduled.push(task);
       }
     }
 
-    // Sort tasks within each day: high priority first, then by creation date
+    // Sort tasks within each day by creation date
     for (const day of days) {
-      byDay[day].sort((a, b) => {
-        if (a.priority !== b.priority) return b.priority - a.priority;
-        return a.created_at.localeCompare(b.created_at);
-      });
+      byDay[day].sort((a, b) => a.created_at.localeCompare(b.created_at));
     }
 
     const stats: Record<string, DayStats> = {};
@@ -51,6 +44,6 @@ export function useCalendarWeekTasks(tasks: Task[], weekStart: Date): CalendarWe
       };
     }
 
-    return { days, byDay, unscheduled, stats };
+    return { days, byDay, stats };
   }, [tasks, weekStart]);
 }

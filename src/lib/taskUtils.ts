@@ -1,11 +1,11 @@
 /** Returns true if the task's scheduled_date or due_date is before `today` and status is open */
 export function isOverdue(
-  task: { scheduled_date: string | null; due_date: string | null; status: string },
+  task: { scheduled_date: string; due_date: string | null; status: string },
   today: string,
 ): boolean {
   if (task.status !== "open") return false;
   return (
-    (task.scheduled_date != null && task.scheduled_date < today) ||
+    task.scheduled_date < today ||
     (task.due_date != null && task.due_date < today)
   );
 }

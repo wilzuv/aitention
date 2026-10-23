@@ -55,6 +55,8 @@ An example of an assistant response combining planning and reflection context.
 
 The installer is for a fresh project, not an upgrade to an existing database. Run it once; it is transactional and a failed installation rolls back. There is no historical migration chain to replay. Future releases must provide explicit upgrade instructions; do not rerun the installer to upgrade.
 
+Upgrading an existing installation: run each script in [supabase/upgrades](supabase/upgrades) that postdates your install, in numeric order, once. `001_remove_priority_require_scheduled_date.sql` removes task priority and requires a scheduled date on every task; tasks that had none (the former Inbox) are scheduled for the current date.
+
 ## 2. Configure sign-in
 
 1. Create a Google Cloud OAuth application and configure its consent screen.

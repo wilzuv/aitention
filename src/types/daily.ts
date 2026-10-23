@@ -67,9 +67,8 @@ export interface Task {
   id: string;
   title: string;
   status: "open" | "done" | "discarded";
-  priority: number;           // 1=low, 2=medium, 3=high
   due_date: string | null;
-  scheduled_date: string | null;
+  scheduled_date: string;
   goal_id: string | null;
   estimated_minutes: number | null;
   actual_minutes: number;

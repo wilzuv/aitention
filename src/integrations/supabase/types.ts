@@ -621,12 +621,11 @@ export type Database = {
           milestone_id: string | null
           notes: string | null
           position: number
-          priority: number | null
           project_id: string | null
           recurrence_rule: Json | null
           reflection: string | null
           schedule_history: Json | null
-          scheduled_date: string | null
+          scheduled_date: string
           status: string
           success_criteria: string | null
           title: string
@@ -646,12 +645,11 @@ export type Database = {
           milestone_id?: string | null
           notes?: string | null
           position?: number
-          priority?: number | null
           project_id?: string | null
           recurrence_rule?: Json | null
           reflection?: string | null
           schedule_history?: Json | null
-          scheduled_date?: string | null
+          scheduled_date: string
           status?: string
           success_criteria?: string | null
           title: string
@@ -671,12 +669,11 @@ export type Database = {
           milestone_id?: string | null
           notes?: string | null
           position?: number
-          priority?: number | null
           project_id?: string | null
           recurrence_rule?: Json | null
           reflection?: string | null
           schedule_history?: Json | null
-          scheduled_date?: string | null
+          scheduled_date?: string
           status?: string
           success_criteria?: string | null
           title?: string

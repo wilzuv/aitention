@@ -49,7 +49,7 @@ export async function fetchSessions(
       *,
       session_tasks (
         *,
-        tasks (id, title, status, priority, scheduled_date)
+        tasks (id, title, status, scheduled_date)
       )
     `)
     .eq("entry_date", date)
@@ -69,7 +69,7 @@ export async function fetchSessionsRange(
       *,
       session_tasks (
         *,
-        tasks (id, title, status, priority, scheduled_date)
+        tasks (id, title, status, scheduled_date)
       )
     `)
     .gte("entry_date", dateFrom)
@@ -89,7 +89,7 @@ export async function fetchUnclosedSession(
       *,
       session_tasks (
         *,
-        tasks (id, title, status, priority, scheduled_date)
+        tasks (id, title, status, scheduled_date)
       )
     `)
     .is("ended_at", null)
@@ -165,7 +165,7 @@ export async function createSession(
       *,
       session_tasks (
         *,
-        tasks (id, title, status, priority, scheduled_date)
+        tasks (id, title, status, scheduled_date)
       )
     `)
     .eq("id", session.id)

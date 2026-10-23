@@ -18,7 +18,6 @@ import {
   DEFAULT_TASK_SORT,
   type TaskSortOption,
 } from "@/lib/taskSort";
-import { getTaskPriorityMeta } from "@/lib/taskPriority";
 import { formatDuration } from "@/lib/formatDuration";
 
 const SORT_STORAGE_KEY = "today.tasks.sort.v1";
@@ -41,19 +40,13 @@ function saveSortPreference(sort: TaskSortOption) {
   }
 }
 
-// ─── Priority bar ────────────────────────────────────────────────────────────
-
-function priorityBarClass(priority: number): string {
-  return getTaskPriorityMeta(priority).dotClass;
-}
-
 // ─── Overdue helper ──────────────────────────────────────────────────────────
 
 function getOverdueDate(task: Task): string | null {
   if (task.status !== "open") return null;
   const today = new Date().toISOString().slice(0, 10);
   if (task.due_date && task.due_date < today) return task.due_date;
-  if (task.scheduled_date && task.scheduled_date < today) return task.scheduled_date;
+  if (task.scheduled_date < today) return task.scheduled_date;
   return null;
 }
 
@@ -73,7 +66,6 @@ const TaskRow = memo(function TaskRow({
   onStartFocus,
 }: TaskRowProps) {
   const isDone = task.status === "done";
-  const priorityMeta = getTaskPriorityMeta(task.priority);
   const overdueDate = getOverdueDate(task);
 
   return (
@@ -84,21 +76,19 @@ const TaskRow = memo(function TaskRow({
         isDone && "opacity-50"
       )}
     >
-      {/* Priority bar — 3px left strip */}
-      <div
-        className={cn(
-          "absolute left-0 top-2 bottom-2 w-[3px] rounded-full",
-          overdueDate ? "bg-destructive/70" : priorityBarClass(task.priority)
-        )}
-        aria-hidden
-      />
+      {/* Overdue bar — 3px left strip */}
+      {overdueDate && (
+        <div
+          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-destructive/70"
+          aria-hidden
+        />
+      )}
 
       {/* Checkbox */}
       <div className="mt-0.5 ml-1">
         <TaskCheckbox
           checked={isDone}
           onChange={(checked) => onToggle(task.id, checked)}
-          priorityBorderClass={isDone ? undefined : priorityMeta.borderClass}
         />
       </div>
 

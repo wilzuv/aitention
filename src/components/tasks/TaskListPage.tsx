@@ -25,7 +25,6 @@ import { TaskCheckbox } from "@/components/ui/TaskCheckbox";
 import { TaskDetailModal } from "@/components/today/TaskDetailModal";
 import { useTasks, type TaskUpdate } from "@/hooks/useTasks";
 import { useGoals } from "@/hooks/useGoals";
-import { getTaskPriorityMeta } from "@/lib/taskPriority";
 import { isOverdue } from "@/lib/taskUtils";
 
 const statusOptions = [
@@ -34,20 +33,13 @@ const statusOptions = [
   { value: "discarded", label: "Discarded" },
 ];
 
-const priorityOptions = [
-  { value: "3", label: "High" },
-  { value: "2", label: "Medium" },
-  { value: "1", label: "Low" },
-];
-
 const statusColors: Record<string, string> = {
   open: "bg-primary/10 text-primary",
   done: "bg-emerald-500/10 text-emerald-600",
   discarded: "bg-muted text-muted-foreground",
 };
 
-function formatScheduled(value: string | null): string {
-  if (!value) return "—";
+function formatScheduled(value: string): string {
   return format(new Date(value + "T00:00:00"), "MMM d");
 }
 
@@ -65,7 +57,6 @@ export function TaskListPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>(getDefaultValues(statusOptions));
-  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -91,17 +82,15 @@ export function TaskListPage() {
     const q = search.trim().toLowerCase();
     return tasks.filter((task) => {
       if (statusFilter.length > 0 && !statusFilter.includes(task.status)) return false;
-      if (priorityFilter.length > 0 && !priorityFilter.includes(String(task.priority))) return false;
       if (q && !task.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [tasks, search, statusFilter, priorityFilter]);
+  }, [tasks, search, statusFilter]);
 
   const sort = useTableSort(
     filtered,
     {
       title: (t) => t.title,
-      priority: (t) => t.priority,
       scheduled: (t) => t.scheduled_date,
       status: (t) => t.status,
     },
@@ -143,13 +132,6 @@ export function TaskListPage() {
           label="Status"
           ariaLabel="Filter by status"
         />
-        <MultiFilterSelect
-          values={priorityFilter}
-          onChange={setPriorityFilter}
-          options={priorityOptions}
-          label="Priority"
-          ariaLabel="Filter by priority"
-        />
       </ListToolbar>
 
       <div className="rounded-lg border border-border bg-card">
@@ -173,7 +155,6 @@ export function TaskListPage() {
               <TableRow>
                 <TableHead className="w-10" />
                 <SortableTableHead sortKey="title" label="Title" sort={sort} />
-                <SortableTableHead sortKey="priority" label="Priority" sort={sort} />
                 <TableHead>Goal</TableHead>
                 <SortableTableHead sortKey="scheduled" label="Scheduled" sort={sort} />
                 <TableHead>Est</TableHead>
@@ -182,7 +163,6 @@ export function TaskListPage() {
             </TableHeader>
             <TableBody>
               {sort.sorted.map((task) => {
-                const priority = getTaskPriorityMeta(task.priority);
                 const goalTitle = task.goal_id ? goalTitleById.get(task.goal_id) : null;
                 return (
                   <TableRow
@@ -195,9 +175,6 @@ export function TaskListPage() {
                         checked={task.status === "done"}
                         onChange={(done) => handleToggle(task.id, done)}
                         disabled={task.status === "discarded"}
-                        priorityBorderClass={
-                          task.status !== "done" ? priority.borderClass : undefined
-                        }
                       />
                     </TableCell>
                     <TableCell className="font-medium max-w-xs">
@@ -217,14 +194,6 @@ export function TaskListPage() {
                           <Repeat className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${priority.selectedClass}`}
-                      >
-                        {priority.label}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs max-w-[140px]" onClick={(e) => e.stopPropagation()}>
                       {goalTitle && task.goal_id ? (
