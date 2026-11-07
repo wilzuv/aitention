@@ -7,6 +7,8 @@ export interface Hypothesis {
   decision_id: string | null;
   statement: string;
   current_credence: number;
+  agent_credence?: number | null;
+  agent_assessments?: AgentAssessment[];
   basis: string | null;
   archived_at: string | null;
   created_at: string;
@@ -48,7 +50,19 @@ export async function fetchHypotheses(
   if (opts.limit !== undefined) q = q.limit(opts.limit);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as Hypothesis[];
+  const rows = (data ?? []) as Hypothesis[];
+  const assessments = await fetchAgentAssessments(
+    supabase,
+    rows.map((h) => h.id),
+  );
+  return rows.map((h) => {
+    const history = assessments.filter((a) => a.hypothesis_id === h.id);
+    return {
+      ...h,
+      agent_credence: history[0]?.posterior_credence ?? null,
+      agent_assessments: history,
+    };
+  });
 }
 
 export async function fetchHypothesisById(
@@ -137,7 +151,8 @@ export async function updateHypothesis(
   const now = new Date().toISOString();
   const row: Record<string, unknown> = { updated_at: now };
   if (patch.statement !== undefined) row.statement = patch.statement;
-  if (patch.current_credence !== undefined) row.current_credence = patch.current_credence;
+  if (patch.current_credence !== undefined)
+    row.current_credence = patch.current_credence;
   if (patch.basis !== undefined) row.basis = patch.basis;
   if (patch.archived === true) row.archived_at = now;
   else if (patch.archived === false) row.archived_at = null;
@@ -203,4 +218,28 @@ export async function deleteHypothesis(
 ): Promise<void> {
   const { error } = await supabase.from("hypotheses").delete().eq("id", id);
   if (error) throw error;
+}
+
+export interface AgentAssessment {
+  id: string;
+  hypothesis_id: string;
+  posterior_credence: number | null;
+  prior_credence: number | null;
+  rationale: string;
+  source_references: string[];
+  writer_id: string;
+  recorded_at: string;
+}
+export async function fetchAgentAssessments(
+  supabase: SupabaseClient,
+  ids: string[],
+) {
+  if (!ids.length) return [] as AgentAssessment[];
+  const { data, error } = await supabase
+    .from("agent_credence_assessments")
+    .select("*")
+    .in("hypothesis_id", ids)
+    .order("recorded_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as AgentAssessment[];
 }

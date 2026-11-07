@@ -50,7 +50,7 @@ An example of an assistant response combining planning and reflection context.
 
 1. Create a **new Supabase project**.
 2. Open the SQL Editor and run [supabase/schema.sql](supabase/schema.sql) in full.
-3. Confirm success. This creates 26 empty application tables, indexes, functions, and access policies. It does not create application users or sample records.
+3. Confirm success. This creates 27 empty application tables, indexes, functions, and access policies. It does not create application users or sample records.
 4. Find your project URL and publishable key in the Supabase dashboard. The frontend accepts a publishable key or legacy anon key. Never use the service-role key in the frontend.
 
 The installer is for a fresh project, not an upgrade to an existing database. Run it once; it is transactional and a failed installation rolls back. There is no historical migration chain to replay. Future releases must provide explicit upgrade instructions; do not rerun the installer to upgrade.
@@ -189,3 +189,11 @@ See [known limitations](docs/known-limitations.md) for remaining engineering wor
 ## Licence
 
 Licensed under the [MIT License](LICENSE). Copyright (c) 2026 William Vikatmaa. Third-party dependencies retain their respective licences.
+
+### Agent hypothesis credences (v1)
+
+Existing installations must apply `supabase/upgrades/002_agent_credences.sql` once before deploying this frontend and the MCP function. The fresh-install schema already includes it. This upgrade adds an independent append-only agent assessment history; it never rewrites legacy hypothesis credences.
+
+Use `aitention_get_hypotheses` or a detailed decision read to retrieve `agent_credence`, `agent_revision` and `agent_assessments`. Call `aitention_append_agent_credence` with the previous revision (null initially), an optional numeric estimate (null means unquantified), rationale, source references and a stable source-event idempotency key. Reused keys with changed payloads and stale revisions are rejected. V1 has one agent track per hypothesis; writer/model provenance is stored on each assessment. All authenticated account credentials can append to it; this is attribution, not separate per-agent authorization.
+
+Hypotheses hold beliefs; decisions receive them through linked hypotheses. Predictions retain their own forecast confidence. Observations, metrics, tasks and experiments gain no generic credence. The existing estimate remains labelled as existing rather than presumed user-endorsed. No live migration or MCP deployment is performed by a source merge alone.

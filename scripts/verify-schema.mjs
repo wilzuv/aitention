@@ -12,7 +12,7 @@ try {
     GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, service_role;`);
   await pg.exec(await readFile(new URL('../supabase/schema.sql', import.meta.url), 'utf8'));
   const tables = (await pg.query("select tablename from pg_tables where schemaname='public'")).rows;
-  assert.equal(tables.length, 26);
+  assert.equal(tables.length, 27);
   for (const {tablename} of tables) {
     assert.equal((await pg.query(`select count(*)::int n from public."${tablename}"`)).rows[0].n, 0);
   }
@@ -21,7 +21,7 @@ try {
   assert.equal(unprotected.rows.length, 0, 'Every application table must have RLS');
   const broad = await pg.query("select tablename from pg_policies where schemaname='public' and (qual='true' or with_check='true')");
   assert.equal(broad.rows.length, 0);
-  console.log('PASS: fresh install, 26 empty tables, RLS enabled and no permissive policies');
+  console.log('PASS: fresh install, 27 empty tables, RLS enabled and no permissive policies');
 
   const alice='00000000-0000-4000-8000-000000000001';
   const bob='00000000-0000-4000-8000-000000000002';
@@ -67,6 +67,23 @@ try {
       and (array_length(c.conkey,1)<>2 or array_length(c.confkey,1)<>2)`);
   assert.equal(unsafe.rows.length,0);
   console.log('PASS: every application relationship enforces same-owner references');
+  await asUser(alice);
+  const h=(await pg.query("insert into hypotheses(statement,current_credence) values ('Synthetic belief',60) returning id")).rows[0];
+  const first=(await pg.query("insert into agent_credence_assessments(hypothesis_id,posterior_credence,rationale,source_references,writer_id,run_id,idempotency_key) values ($1,40,'Initial estimate','[]','agent','run-1','event-1') returning *",[h.id])).rows[0];
+  assert.equal(first.prior_credence,null);
+  await assert.rejects(pg.query("insert into agent_credence_assessments(hypothesis_id,posterior_credence,rationale,source_references,writer_id,run_id,idempotency_key) values ($1,50,'Stale','[]','agent','run-2','event-2')",[h.id]),/Stale/);
+  const next=(await pg.query("insert into agent_credence_assessments(hypothesis_id,expected_revision,posterior_credence,rationale,source_references,writer_id,run_id,idempotency_key) values ($1,$2,null,'Now uncertain','[]','agent','run-2','event-2') returning *",[h.id,first.id])).rows[0];
+  assert.equal(next.prior_credence,40);assert.equal(next.posterior_credence,null);
+  assert.equal((await pg.query('select current_credence from hypotheses where id=$1',[h.id])).rows[0].current_credence,60);
+  await assert.rejects(pg.query('update agent_credence_assessments set posterior_credence=99'),/permission denied/);
+  await assert.rejects(pg.query('delete from agent_credence_assessments'),/permission denied/);
+  await asUser(bob);
+  assert.equal((await pg.query('select * from agent_credence_assessments')).rows.length,0);
+  await assert.rejects(pg.query("insert into agent_credence_assessments(hypothesis_id,rationale,source_references,writer_id,run_id,idempotency_key) values ($1,'Bad owner','[]','agent','run','bad')",[h.id]),/not accessible/);
+  await pg.exec('RESET ROLE; SET ROLE service_role');
+  await assert.rejects(pg.query("insert into agent_credence_assessments(user_id,hypothesis_id,rationale,source_references,writer_id,run_id,idempotency_key) values ($1,$2,'Bad owner','[]','agent','run','bad')",[bob,h.id]),/not accessible/);
+  console.log('PASS: independent agent history, null estimates, stale-write rejection, append-only grants and browser/privileged owner isolation');
+
 } catch(e) {
   console.error('Schema verification failed:',e.message);process.exitCode=1;
 } finally { await pg.close(); }

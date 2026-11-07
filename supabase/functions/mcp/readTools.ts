@@ -385,7 +385,7 @@ async function getDecisionDetail(c: ScopedClient, p: Params) {
   if (notesRes.error) throw notesRes.error;
   if (hyposRes.error) throw hyposRes.error;
 
-  const hypotheses = (hyposRes.data ?? []) as Array<{ id: string }>;
+  const hypotheses = await withAgentCredences(c, (hyposRes.data ?? []) as Array<{ id: string }>);
   const hypoIds = hypotheses.map((h) => h.id);
 
   // Experiments linked to any of the decision's hypotheses via junction table.
@@ -458,10 +458,10 @@ async function getHypotheses(c: ScopedClient, p: Params) {
   }
 
   return {
-    hypotheses: rows.map((h) => ({
+    hypotheses: await withAgentCredences(c, rows.map((h) => ({
       ...h,
       evidence: evidenceByHypo[h.id] ?? [],
-    })),
+    }))),
   };
 }
 
@@ -731,3 +731,28 @@ export const READ_HANDLERS: Record<
   [`${MCP_TOOL_PREFIX}list_skills`]: listSkills,
   [`${MCP_TOOL_PREFIX}read_skill`]: readSkill,
 };
+
+async function withAgentCredences(
+  c: ScopedClient,
+  rows: Array<{ id: string }>,
+) {
+  if (!rows.length) return rows;
+  const { data, error } = await c
+    .from("agent_credence_assessments")
+    .select("*")
+    .in(
+      "hypothesis_id",
+      rows.map((h) => h.id),
+    )
+    .order("recorded_at", { ascending: false });
+  if (error) throw error;
+  return rows.map((h) => {
+    const history = (data ?? []).filter((a) => a.hypothesis_id === h.id);
+    return {
+      ...h,
+      agent_credence: history[0]?.posterior_credence ?? null,
+      agent_revision: history[0]?.id ?? null,
+      agent_assessments: history,
+    };
+  });
+}

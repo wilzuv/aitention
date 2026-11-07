@@ -162,6 +162,34 @@ export function HypothesisFormModal({
             </div>
 
             {isEdit && (
+              <div className="space-y-2 text-sm">
+                <p>
+                  Agent estimate:{" "}
+                  {hypothesis.agent_credence == null
+                    ? "Unquantified"
+                    : `${hypothesis.agent_credence}%`}
+                </p>
+                {hypothesis.agent_assessments?.map((a) => (
+                  <details key={a.id}>
+                    <summary>
+                      {a.posterior_credence ?? "Unquantified"}
+                      {a.posterior_credence != null ? "%" : ""} ·{" "}
+                      {new Date(a.recorded_at).toLocaleDateString()}
+                    </summary>
+                    <p>{a.rationale}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {a.writer_id}
+                    </p>
+                    {a.source_references.map((r, i) => (
+                      <p className="text-xs break-all" key={i}>
+                        {r}
+                      </p>
+                    ))}
+                  </details>
+                ))}
+              </div>
+            )}
+            {isEdit && (
               <>
                 <Separator />
                 <div className="space-y-3">
@@ -209,11 +237,7 @@ export function HypothesisFormModal({
                   <Trash2 className="h-4 w-4 mr-1.5" />
                   Delete
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleArchive}
-                >
+                <Button type="button" variant="ghost" onClick={handleArchive}>
                   {hypothesis?.archived_at ? (
                     <>
                       <ArchiveRestore className="h-4 w-4 mr-1.5" />
@@ -234,7 +258,10 @@ export function HypothesisFormModal({
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={saving || !statement.trim()}>
+              <Button
+                onClick={handleSave}
+                disabled={saving || !statement.trim()}
+              >
                 {saving ? "Saving..." : "Save"}
               </Button>
             </div>
@@ -247,8 +274,8 @@ export function HypothesisFormModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete hypothesis?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this hypothesis and its evidence. This
-              action cannot be undone.
+              This will permanently delete this hypothesis and its evidence.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

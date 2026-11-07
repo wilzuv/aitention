@@ -1,6 +1,6 @@
 # Agent-maintained hypothesis credences
 
-Status: proposal for implementation. This PR changes documentation only.
+Status: v1 implemented in this PR. The design below describes the longer-term contract; v1 uses one independent agent track, preserves the legacy estimate without relabelling it as human, and exposes append-only assessment history through MCP and the hypothesis UI. Explicit adoption and multiple agent tracks remain future work.
 
 ## User intent
 
@@ -42,4 +42,4 @@ The existing AiTention decision watch has been authorized to maintain agent esti
 - Legacy attribution stays honest; fresh installs and upgrades produce compatible schemas.
 - Both estimates, unknown states and provenance are visible on mobile without mandatory extra fields.
 
-This proposal has been checked against the current repository schema and live tool descriptions. No runtime implementation, database migration or live data modification is included in this PR.
+This proposal has been checked against the current repository schema and live tool descriptions. V1 includes runtime code and upgrade 002; no live data migration or deployment has been performed.

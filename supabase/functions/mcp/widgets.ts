@@ -40,6 +40,8 @@ interface HypothesisRow {
   id: string;
   statement?: string;
   current_credence?: number;
+  agent_credence?: number | null;
+  agent_revision?: string | null;
   basis?: string | null;
   updated_at?: string;
   evidence?: EvidenceRow[];
@@ -52,6 +54,8 @@ function trimHypotheses(result: unknown): unknown {
       id: h.id,
       statement: h.statement ?? "",
       current_credence: h.current_credence ?? null,
+      agent_credence: h.agent_credence ?? null,
+      agent_revision: h.agent_revision ?? null,
       basis: h.basis ?? null,
       updated_at: h.updated_at ?? null,
       evidence_count: (h.evidence ?? []).length,

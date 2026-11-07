@@ -26,6 +26,41 @@ import { MCP_TOOL_PREFIX, type Params, type ToolDef } from "./toolTypes.ts";
 
 export const WRITE_TOOLS: ToolDef[] = [
   {
+    name: `${MCP_TOOL_PREFIX}append_agent_credence`,
+    description:
+      "Maintain an independent agent probability for a hypothesis, never changing current_credence. Read agent_assessments first; pass the latest ID as expected_revision (null for first assessment). Include evidence sources and rationale; null posterior means unquantified. Stable event key makes retries idempotent. Returns the recorded assessment. Decisions use linked hypothesis estimates; other primitives are unchanged.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hypothesis_id: { type: "string" },
+        expected_revision: { type: ["string", "null"] },
+        posterior_credence: {
+          type: ["integer", "null"],
+          minimum: 0,
+          maximum: 100,
+        },
+        rationale: { type: "string" },
+        source_references: { type: "array", items: { type: "string" } },
+        writer_id: { type: "string" },
+        run_id: { type: "string" },
+        model_id: { type: "string" },
+        idempotency_key: { type: "string" },
+      },
+      required: [
+        "hypothesis_id",
+        "expected_revision",
+        "posterior_credence",
+        "rationale",
+        "source_references",
+        "writer_id",
+        "run_id",
+        "idempotency_key",
+      ],
+    },
+  },
+
+
+  {
     name: `${MCP_TOOL_PREFIX}create_goal`,
     description:
       "Create a new goal. Goals are open by default (status=NULL). Use parent_goal_id to nest goals in a tree. Returns the created goal.",
@@ -1305,6 +1340,7 @@ export const WRITE_HANDLERS: Record<
   [`${MCP_TOOL_PREFIX}review_decision`]: reviewDecisionHandler,
   [`${MCP_TOOL_PREFIX}create_hypothesis`]: createHypothesisHandler,
   [`${MCP_TOOL_PREFIX}update_hypothesis`]: updateHypothesisHandler,
+  [`${MCP_TOOL_PREFIX}append_agent_credence`]: appendAgentCredence,
   [`${MCP_TOOL_PREFIX}append_hypothesis_evidence`]: appendHypothesisEvidenceHandler,
   [`${MCP_TOOL_PREFIX}create_experiment`]: createExperimentHandler,
   [`${MCP_TOOL_PREFIX}update_experiment`]: updateExperimentHandler,
@@ -1312,3 +1348,79 @@ export const WRITE_HANDLERS: Record<
   [`${MCP_TOOL_PREFIX}log_goal`]: logGoalHandler,
   [`${MCP_TOOL_PREFIX}create_project`]: createProject,
 };
+
+async function appendAgentCredence(c: ScopedClient, p: Params) {
+  if (p.expected_revision !== null && typeof p.expected_revision !== "string")
+    throw new ValidationError(
+      "expected_revision must be null or an assessment ID",
+    );
+  const keys = [
+    "hypothesis_id",
+    "expected_revision",
+    "posterior_credence",
+    "rationale",
+    "source_references",
+    "writer_id",
+    "run_id",
+    "model_id",
+    "idempotency_key",
+  ];
+  if (
+    p.posterior_credence !== null &&
+    (!Number.isInteger(p.posterior_credence) ||
+      Number(p.posterior_credence) < 0 ||
+      Number(p.posterior_credence) > 100)
+  )
+    throw new ValidationError("Credence must be null or an integer 0–100");
+  for (const k of [
+    "hypothesis_id",
+    "rationale",
+    "writer_id",
+    "run_id",
+    "idempotency_key",
+  ])
+    if (typeof p[k] !== "string" || !String(p[k]).trim())
+      throw new ValidationError(`${k} required`);
+  if (
+    !Array.isArray(p.source_references) ||
+    !p.source_references.every((x) => typeof x === "string")
+  )
+    throw new ValidationError("Source references must be strings");
+  const payload = Object.fromEntries(
+    keys.filter((k) => p[k] !== undefined).map((k) => [k, p[k]]),
+  );
+  const existing = async () => {
+    const { data, error } = await c
+      .from("agent_credence_assessments")
+      .select("*")
+      .eq("hypothesis_id", p.hypothesis_id)
+      .eq("idempotency_key", p.idempotency_key)
+      .maybeSingle();
+    if (error) throw error;
+    if (
+      data &&
+      keys.some(
+        (k) =>
+          JSON.stringify(data[k] ?? null) !==
+          JSON.stringify(payload[k] ?? null),
+      )
+    )
+      throw new ValidationError(
+        "Idempotency key reused with different content",
+      );
+    return data;
+  };
+  const old = await existing();
+  if (old) return { assessment: old, created: false };
+  const { data, error } = await c
+    .from("agent_credence_assessments")
+    .insert(payload)
+    .select()
+    .single();
+  if (error) {
+    const retry = await existing();
+    if (retry) return { assessment: retry, created: false };
+    throw error;
+  }
+  return { assessment: data, created: true };
+}

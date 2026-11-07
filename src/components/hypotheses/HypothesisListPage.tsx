@@ -72,7 +72,11 @@ export function HypothesisListPage() {
       </div>
 
       <ListToolbar>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search hypotheses…" />
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search hypotheses…"
+        />
         <Button
           variant={showArchived ? "secondary" : "outline"}
           size="sm"
@@ -101,9 +105,21 @@ export function HypothesisListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableTableHead sortKey="statement" label="Statement" sort={sort} />
-                <SortableTableHead sortKey="credence" label="Credence" sort={sort} />
-                <SortableTableHead sortKey="updated" label="Updated" sort={sort} />
+                <SortableTableHead
+                  sortKey="statement"
+                  label="Statement"
+                  sort={sort}
+                />
+                <SortableTableHead
+                  sortKey="credence"
+                  label="Existing estimate"
+                  sort={sort}
+                />
+                <SortableTableHead
+                  sortKey="updated"
+                  label="Updated"
+                  sort={sort}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -129,7 +145,15 @@ export function HypothesisListPage() {
                           style={{ width: `${h.current_credence}%` }}
                         />
                       </div>
-                      <span className="tabular-nums text-sm">{h.current_credence}%</span>
+                      <span className="tabular-nums text-sm">
+                        {h.current_credence}%
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Agent:{" "}
+                      {h.agent_credence == null
+                        ? "Unquantified"
+                        : `${h.agent_credence}%`}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
