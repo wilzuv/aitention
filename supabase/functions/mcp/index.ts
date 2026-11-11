@@ -21,7 +21,6 @@ import { NotFoundError, ValidationError } from "./helpers.ts";
 import { RESOURCES, readResource } from "./resources.ts";
 import { ERR, err, ok, type JsonRpcRequest, type JsonRpcResponse } from "./jsonrpc.ts";
 import { metadataUrl, protectedResourceMetadata } from "./oauthMetadata.ts";
-import { WIDGETS_BY_TOOL } from "./widgets.ts";
 
 const SERVER_INFO = { name: "aitention", version: "0.1.0" };
 const PROTOCOL_VERSION = "2025-06-18";
@@ -118,7 +117,6 @@ async function handleRpc(
             name: t.name,
             description: t.description,
             inputSchema: t.inputSchema,
-            ...(t._meta ? { _meta: t._meta } : {}),
           })),
         });
 
@@ -126,13 +124,8 @@ async function handleRpc(
         const params = (rpc.params ?? {}) as { name?: string; arguments?: Record<string, unknown> };
         if (!params.name) return err(id, ERR.INVALID_PARAMS, "Missing tool name");
         const result = await executeTool(auth.scopedClient, params.name, params.arguments ?? {});
-        // Tools with an Apps SDK widget also return structuredContent — the
-        // payload that hydrates the widget iframe (window.openai.toolOutput).
-        // The text content stays as-is for clients that ignore widgets.
-        const widget = WIDGETS_BY_TOOL[params.name];
         return ok(id, {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          ...(widget ? { structuredContent: widget.structuredContent(result) } : {}),
           isError: false,
         });
       }
