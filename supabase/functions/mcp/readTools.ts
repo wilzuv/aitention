@@ -17,7 +17,6 @@ import {
 } from "./helpers.ts";
 import { SKILLS } from "./skills.generated.ts";
 import { MCP_TOOL_PREFIX, type Params, type ToolDef } from "./toolTypes.ts";
-import { HYPOTHESES_WIDGET_URI } from "./widgets.ts";
 
 export const READ_TOOLS: ToolDef[] = [
   {
@@ -112,11 +111,6 @@ export const READ_TOOLS: ToolDef[] = [
         project_id: { type: "string", description: "Filter to hypotheses in this project." },
         limit: { type: "number" },
       },
-    },
-    _meta: {
-      "openai/outputTemplate": HYPOTHESES_WIDGET_URI,
-      "openai/toolInvocation/invoking": "Loading hypotheses…",
-      "openai/toolInvocation/invoked": "Rendered hypotheses",
     },
   },
   {
