@@ -191,7 +191,7 @@ export async function readResource(
   client: ScopedClient,
   uri: string
 ): Promise<
-  { uri: string; mimeType: string; text: string; _meta?: Record<string, unknown> } | null
+  { uri: string; mimeType: string; text: string } | null
 > {
   const reader = READERS[uri];
   if (!reader) return null;
