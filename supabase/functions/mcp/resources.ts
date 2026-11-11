@@ -5,7 +5,6 @@
 // table reads as the Phase-1 tools.
 
 import type { ScopedClient } from "./scopedClient.ts";
-import { HYPOTHESES_WIDGET_URI, WIDGET_HTML, WIDGET_MIME_TYPE } from "./widgets.ts";
 
 export interface ResourceDef {
   uri: string;
@@ -56,13 +55,6 @@ export const RESOURCES: ResourceDef[] = [
     description:
       "Experiments with status='running' plus today's log per experiment (or null when today is still unlogged). Lets a client see at a glance which experiments are awaiting today's check-in.",
     mimeType: "application/json",
-  },
-  {
-    uri: HYPOTHESES_WIDGET_URI,
-    name: "Hypotheses widget",
-    description:
-      "ChatGPT Apps SDK UI template for get_hypotheses — hypothesis cards with credence bars and inline evidence logging.",
-    mimeType: WIDGET_MIME_TYPE,
   },
 ];
 
@@ -201,17 +193,6 @@ export async function readResource(
 ): Promise<
   { uri: string; mimeType: string; text: string; _meta?: Record<string, unknown> } | null
 > {
-  // Widget templates are static HTML — no user data, no ScopedClient.
-  const widgetHtml = WIDGET_HTML[uri];
-  if (widgetHtml) {
-    return {
-      uri,
-      mimeType: WIDGET_MIME_TYPE,
-      text: widgetHtml,
-      _meta: { "openai/widgetPrefersBorder": true },
-    };
-  }
-
   const reader = READERS[uri];
   if (!reader) return null;
   const payload = await reader(client);
