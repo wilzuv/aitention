@@ -8,10 +8,6 @@ export interface ToolDef {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  // Client-facing annotations passed through tools/list verbatim. Used by
-  // the ChatGPT Apps SDK ("openai/outputTemplate" → widget resource URI);
-  // other MCP clients ignore it.
-  _meta?: Record<string, unknown>;
 }
 
 export type Params = Record<string, unknown>;
